@@ -37,7 +37,11 @@ let library =
       book.Id = library.nextid++;
       library.books.push(book);
       library.totalbooks++;
-    }
+    },
+      deleteBook: (book) => {
+      library.books = library.books.filter(element => element !== book);
+      library.totalbooks--;
+      }
   };
   const checkBookErrors = (book) => {
     let yearRange = {from:'1940',to:'2100'}
@@ -76,16 +80,15 @@ res.status(200).send({"result":result,"error":error});
 };
 
   //This is a sanity endpoint used to check that the server is up and running.
-  app.get('/books/health', (req, res) => {
-    res.status(200).send("OK");
-  });
-  //Creates a new Book in the system
+app.get('/books/health', (req, res) => {
+  res.status(200).send("OK");
+});
 
-  //When a new Book is created, it is assigned by the server the next id in turn.
+//When a new Book is created, it is assigned by the server the next id in turn.
 app.post('/book', (req, res) => {
   createBook(req,res);
 });
-
+//Returns the total number of Books in the system, according to optional filters.
 const numOfBooksByFilter = (res,req) => {
   let filter = req.query;
   let count = 0;
@@ -95,13 +98,13 @@ const numOfBooksByFilter = (res,req) => {
   });
   return count;
 };
-
+//Returns the content of the books according to the given filters 
 const checkFilter = (book, filter) => {//TODO: Make it more clean
   const filterNotPassed = undefined;
   let meetRequirement = true;
-  if(filter.Author!==filterNotPassed&&book.Author!==filter.Author)
+  if(filter.author!==filterNotPassed&&book.Author!==filter.author)
     meetRequirement = false;
-  if(filter.Genre!==filterNotPassed&&filter.Genre.includes(book.Genre.toUpperCase())===false)
+  if(filter.genre!==filterNotPassed&&filter.genre.includes(book.Genre.toUpperCase())===false)
     meetRequirement = false;
   if(filter["year-bigger-than"]!==filterNotPassed&&book["Print-year"]<=filter["year-bigger-than"])
     meetRequirement = false;
@@ -116,16 +119,16 @@ const checkFilter = (book, filter) => {//TODO: Make it more clean
 const isAllCaps = (str) => {
   return str.toUpperCase() === str;
 };
-const isAllGeneresAC = (Genres) => { //AC = all caps
+const isAllGeneresAC = (genres) => { //AC = all caps
   let meetRequirement = true;
-  for (const Genere of Genres) 
+  for (const Genere of genres) 
       if (!isAllCaps(Genere))
         meetRequirement = false;
   return meetRequirement;
   };
 //Returns the total number of Books in the system, according to optional filters.
 app.get('/books/total', (req, res) => {
-  if(!isAllGeneresAC(req.query.Genre))
+  if(!isAllGeneresAC(req.query.genre))
     res.status(400).send("Error: Genre must be all caps");
   let total = numOfBooksByFilter(res,req);
   res.status(200).send({"result":total});
@@ -147,27 +150,45 @@ app.get('/books', (req, res) => {
   res.status(200).send({"result":books});
 });
 
-const getBookById = (res,req) => {
-  let Id = req.query.Id;
+const getBookById = (req,res) => {
+  let Id = req.query.id;
   let book = library.books.find((book) => book.Id == Id);
   return book;
 }
 
 //Gets a single book’s data according to its id
 app.get('/book', (req, res) => {
-  let book = getBookById(res,req);
+  let book = getBookById(req,res);
   if(book == undefined)
-    res.status(404).send({"error":"Error: no such Book with id " + req.query.Id});
+    res.status(404).send({"error":"Error: no such Book with id " + req.query.id});
   else
     res.status(200).send({"result":book});
 });
 //Updates given book’s price
 app.put('/book', (req, res) => {
- updateBookPrice(res,req);
+  let book = getBookById(req,res);
+  let oldPrice;
+  if(book == undefined)
+    res.status(404).send({"error":"Error: no such Book with id " + req.query.id});
+  else if(!isPriceValid(book))
+    res.status(429).send({"error":"Error: price update for book " + req.query.id + " must be positive integer"});
+  else
+    oldPrice = book.Price;
+    book.Price = req.query.price;
+  res.status(200).send({"result":oldPrice});
 });
+
 //Deletes a Book object.
 app.delete('/book', (req, res) => {
-  deleteBookById(res,req);
+  let book = getBookById(req,res);
+  if(book==undefined)
+    res.status(404).send({"error":"Error: no such Book with id " + req.query.id});
+  else
+  {
+    library.deleteBook(book);
+    res.status(200).send({"result":book});
+  }
+    
 });
 
 app.listen(port, () => {
