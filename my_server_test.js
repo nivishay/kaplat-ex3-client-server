@@ -20,21 +20,21 @@ const yearRange ={
   to:'year',
 }
 let book = {
-  Id: 1,
-  Title: "The Great Gatsby",
-  Author: "F. Scott Fitzgerald",
-  "Print-year": '1925',
-  Price: '20.99',
-  Genre: "Classic Fiction"
+  id: '1',
+  title: "The Great Gatsby",
+  author: "F. Scott Fitzgerald",
+  year: '1925',
+  price: '20.99',
+  genre: []
 };
 
 let library =
 {
     books:[],
     totalbooks:0,
-    nextid:0,
+    nextid:1,
       addBook: (book) => {
-      book.Id = library.nextid++;
+      book.id = library.nextid++;
       library.books.push(book);
       library.totalbooks++;
     },
@@ -46,26 +46,26 @@ let library =
   const checkBookErrors = (book) => {
     let yearRange = {from:'1940',to:'2100'}
     if(bookExists(book))
-        return "Error: Book with the title " + book.Title + " already exists in the system";
+        return "Error: Book with the title " + book.title + " already exists in the system";
     if(!isPriceValid(book))
         return "Error: Can’t create new Book with negative price";
     if(!isYearInRange(book, yearRange))
-      return "Error: Can’t create new Book that its year " +book['Print-year'] + " is not in the accepted range [1940  -> 2100]";
+      return "Error: Can’t create new Book that its year " +book.year + " is not in the accepted range [1940  -> 2100]";
     return "no error";
   }
 const bookExists = (book) => {
 return library.books.some((existingBook) => {
-return existingBook.Title.toLowerCase() === book.Title.toLowerCase();
+return existingBook.title.toLowerCase() === book.title.toLowerCase();
 });
 };
 
 const isPriceValid = (book) => {
-let price = book.Price;
+let price = book.price;
 return price >= 0;
 };
 
 const isYearInRange = (book,yearRange) => {
-const printYear = book['Print-year'];
+const printYear = book.year;
 return printYear >= yearRange.from &&  printYear <= yearRange.to;
   };
 const createBook = (req,res) => {
@@ -102,19 +102,19 @@ const numOfBooksByFilter = (res,req) => {
 const checkFilter = (book, filter) => {//TODO: Make it more clean
   const filterNotPassed = undefined;
   let meetRequirement = true;
-  if(filter.author!==filterNotPassed&&book.Author!==filter.author)
-    meetRequirement = false;
-  if(filter.genre!==filterNotPassed&&filter.genre.includes(book.Genre.toUpperCase())===false)
-    meetRequirement = false;
-  if(filter["year-bigger-than"]!==filterNotPassed&&book["Print-year"]<=filter["year-bigger-than"])
-    meetRequirement = false;
-  if(filter["year-smaller-than"]!==filterNotPassed&&book["Print-year"]>=filter["year-smaller-than"])
-    meetRequirement = false;
-  if(filter["price-bigger-than"]!==filterNotPassed&&book.Price>=filter["price-bigger-than"])
-    meetRequirement = false;
-  if(filter["price-smaller-than"]!==filterNotPassed&&book.Price<=filter["price-smaller-than"])
-    meetRequirement = false;
-  return meetRequirement;
+  const bookGenres = book.genre.map(genre => genre.toUpperCase()); // convert all genres to uppercase
+  const isValidGenre = filter.genre.some(genre => bookGenres.includes(genre)); // check if any genre matches
+
+const meetsAuthor = filter.author === filterNotPassed || book.Author === filter.author;
+const meetsgenre = filter.genre === filterNotPassed || isValidGenre;
+const meetsYearBiggerThan = filter["year-bigger-than"] === filterNotPassed || book.year > filter["year-bigger-than"];
+const meetsYearSmallerThan = filter["year-smaller-than"] === filterNotPassed || book.year < filter["year-smaller-than"];
+const meetsPriceBiggerThan = filter["price-bigger-than"] === filterNotPassed || book.price > filter["price-bigger-than"];
+const meetsPriceSmallerThan = filter["price-smaller-than"] === filterNotPassed || book.price < filter["price-smaller-than"];
+
+const meetsRequirement = meetsAuthor && meetsgenre && meetsYearBiggerThan && meetsYearSmallerThan && meetsPriceBiggerThan && meetsPriceSmallerThan;
+
+return meetsRequirement;
 };
 const isAllCaps = (str) => {
   return str.toUpperCase() === str;
@@ -137,7 +137,7 @@ app.get('/books/total', (req, res) => {
 const getBooksByFilter = (res,req) => {
   let filter = req.query;
   let result = [];
-  library.books.sort((a,b) => a.Title.localeCompare(b.Title));//TODO: Make it more efficient (O(n) instead of O(n^2))
+  library.books.sort((a,b) => a.Title.localeCompare(b.title));//TODO: Make it more efficient (O(n) instead of O(n^2))
   library.books.forEach((book) => {
     if(checkFilter(book,filter))
       result.push(book);
@@ -150,9 +150,10 @@ app.get('/books', (req, res) => {
   res.status(200).send({"result":books});
 });
 
+//Gets a single book’s data according to its id
 const getBookById = (req,res) => {
-  let Id = req.query.id;
-  let book = library.books.find((book) => book.Id == Id);
+  let id = req.query.id;
+  let book = library.books.find((book) => book.id == id);
   return book;
 }
 
@@ -171,10 +172,10 @@ app.put('/book', (req, res) => {
   if(book == undefined)
     res.status(404).send({"error":"Error: no such Book with id " + req.query.id});
   else if(!isPriceValid(book))
-    res.status(429).send({"error":"Error: price update for book " + req.query.id + " must be positive integer"});
+    res.status(409).send({"error":"Error: price update for book " + req.query.id + " must be a positive integer"});
   else
-    oldPrice = book.Price;
-    book.Price = req.query.price;
+    oldPrice = book.price;
+    book.price = req.query.price;
   res.status(200).send({"result":oldPrice});
 });
 
@@ -194,4 +195,3 @@ app.delete('/book', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
-
