@@ -25,7 +25,7 @@ let book = {
   author: "F. Scott Fitzgerald",
   year: '1925',
   price: '20.99',
-  genre: []
+  genres: []
 };
 
 let library =
@@ -101,35 +101,44 @@ const numOfBooksByFilter = (res,req) => {
 //Returns the content of the books according to the given filters 
 const checkFilter = (book, filter) => {//TODO: Make it more clean
   const filterNotPassed = undefined;
-  let meetRequirement = true;
-  const bookGenres = book.genre.map(genre => genre.toUpperCase()); // convert all genres to uppercase
-  const isValidGenre = filter.genre.some(genre => bookGenres.includes(genre)); // check if any genre matches
+  if(filter.genres === filterNotPassed)
+    meetsgenre = true
+  else
+  {
+    const filterGenres = Array.isArray(filter.genres)
+    ? filter.genres
+    : filter.genres.split(","); // split genres string into an array
+    const bookGenres = book.genres.map(genres => genres.toUpperCase()); // convert all genres to uppercase
+    meetsgenre = filterGenres.some(genres => bookGenres.includes(genres)); // check if any genre matches
+    }
+  const meetsAuthor = filter.author === filterNotPassed || book.author === filter.author;
+  const meetsYearBiggerThan = filter["year-bigger-than"] === filterNotPassed || book.year > filter["year-bigger-than"];
+  const meetsYearSmallerThan = filter["year-smaller-than"] === filterNotPassed || book.year < filter["year-smaller-than"];
+  const meetsPriceBiggerThan = filter["price-bigger-than"] === filterNotPassed || book.price > filter["price-bigger-than"];
+  const meetsPriceSmallerThan = filter["price-smaller-than"] === filterNotPassed || book.price < filter["price-smaller-than"];
+  let meetsRequirement = meetsAuthor && meetsgenre && meetsYearBiggerThan && meetsYearSmallerThan && meetsPriceBiggerThan && meetsPriceSmallerThan;
 
-const meetsAuthor = filter.author === filterNotPassed || book.Author === filter.author;
-const meetsgenre = filter.genre === filterNotPassed || isValidGenre;
-const meetsYearBiggerThan = filter["year-bigger-than"] === filterNotPassed || book.year > filter["year-bigger-than"];
-const meetsYearSmallerThan = filter["year-smaller-than"] === filterNotPassed || book.year < filter["year-smaller-than"];
-const meetsPriceBiggerThan = filter["price-bigger-than"] === filterNotPassed || book.price > filter["price-bigger-than"];
-const meetsPriceSmallerThan = filter["price-smaller-than"] === filterNotPassed || book.price < filter["price-smaller-than"];
-
-const meetsRequirement = meetsAuthor && meetsgenre && meetsYearBiggerThan && meetsYearSmallerThan && meetsPriceBiggerThan && meetsPriceSmallerThan;
-
-return meetsRequirement;
+  return meetsRequirement;
 };
+
 const isAllCaps = (str) => {
   return str.toUpperCase() === str;
 };
 const isAllGeneresAC = (genres) => { //AC = all caps
   let meetRequirement = true;
-  for (const Genere of genres) 
+  const filterGenres = Array.isArray(genres)
+  ? genres
+  : genres.split(","); // split genres string into an array
+  for (const Genere of filterGenres) 
       if (!isAllCaps(Genere))
         meetRequirement = false;
   return meetRequirement;
   };
+
 //Returns the total number of Books in the system, according to optional filters.
 app.get('/books/total', (req, res) => {
-  if(!isAllGeneresAC(req.query.genre))
-    res.status(400).send("Error: Genre must be all caps");
+  if(req.query.genres!== undefined && !isAllGeneresAC(req.query.genres))
+      res.status(400).send("Error: Genre must be all caps");
   let total = numOfBooksByFilter(res,req);
   res.status(200).send({"result":total});
 })
@@ -137,7 +146,7 @@ app.get('/books/total', (req, res) => {
 const getBooksByFilter = (res,req) => {
   let filter = req.query;
   let result = [];
-  library.books.sort((a,b) => a.Title.localeCompare(b.title));//TODO: Make it more efficient (O(n) instead of O(n^2))
+  library.books.sort((a,b) => a.title.localeCompare(b.title));//TODO: Make it more efficient (O(n) instead of O(n^2))
   library.books.forEach((book) => {
     if(checkFilter(book,filter))
       result.push(book);
@@ -146,6 +155,8 @@ const getBooksByFilter = (res,req) => {
 }
 //Returns the content of the books according to the given filters as described by the total endpoint
 app.get('/books', (req, res) => {
+  if(req.query.genres!== undefined && !isAllGeneresAC(req.query.genres))
+    res.status(400).send("Error: Genre must be all caps");
   let books = getBooksByFilter(res,req);
   res.status(200).send({"result":books});
 });
