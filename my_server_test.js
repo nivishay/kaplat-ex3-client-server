@@ -2,6 +2,8 @@ const express = require('express');
 const app = express();
 const port = 8574;
 const bodyParser = require('body-parser');
+const logger = require('./loggers');
+let requestCount = 0;
 
 app.use(
   bodyParser.json({
@@ -9,7 +11,7 @@ app.use(
       return true;
     },
   })
-);
+); 
 app.use(bodyParser.urlencoded({ extended: true }));
 
 //LIBRARY SERVER 
