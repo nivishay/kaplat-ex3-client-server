@@ -1,6 +1,5 @@
 const express = require('express');
 const app = express();
-const request = require('./updateLibrary.js');
 const port = 8574;
 const bodyParser = require('body-parser');
 
@@ -75,8 +74,12 @@ error = checkBookErrors(book);
 if(error === "no error"){
 library.addBook(book);
 result = book;
+res.status(200).send({"result":result,"errorMessage":error});
 }
-res.status(200).send({"result":result,"error":error});
+else{
+  res.status(409).send({"result":result,"errorMessage":error});
+}
+
 };
 
   //This is a sanity endpoint used to check that the server is up and running.
@@ -146,7 +149,7 @@ app.get('/books/total', (req, res) => {
 const getBooksByFilter = (res,req) => {
   let filter = req.query;
   let result = [];
-  library.books.sort((a,b) => a.title.localeCompare(b.title));//TODO: Make it more efficient (O(n) instead of O(n^2))
+  library.books.sort((a,b) => a.title.localeCompare(b.title));
   library.books.forEach((book) => {
     if(checkFilter(book,filter))
       result.push(book);
@@ -172,7 +175,7 @@ const getBookById = (req,res) => {
 app.get('/book', (req, res) => {
   let book = getBookById(req,res);
   if(book == undefined)
-    res.status(404).send({"error":"Error: no such Book with id " + req.query.id});
+    res.status(404).send({"errorMessage":"Error: no such Book with id " + req.query.id});
   else
     res.status(200).send({"result":book});
 });
@@ -181,9 +184,9 @@ app.put('/book', (req, res) => {
   let book = getBookById(req,res);
   let oldPrice;
   if(book == undefined)
-    res.status(404).send({"error":"Error: no such Book with id " + req.query.id});
+    res.status(404).send({"errorMessage":"Error: no such Book with id " + req.query.id});
   else if(!isPriceValid(book))
-    res.status(409).send({"error":"Error: price update for book " + req.query.id + " must be a positive integer"});
+    res.status(409).send({"errorMessage":"Error: price update for book " + req.query.id + " must be a positive integer"});
   else
     oldPrice = book.price;
     book.price = req.query.price;
@@ -194,13 +197,12 @@ app.put('/book', (req, res) => {
 app.delete('/book', (req, res) => {
   let book = getBookById(req,res);
   if(book==undefined)
-    res.status(404).send({"error":"Error: no such Book with id " + req.query.id});
+    res.status(404).send({"errorMessage":"Error: no such Book with id " + req.query.id});
   else
   {
     library.deleteBook(book);
     res.status(200).send({"result":book});
   }
-    
 });
 
 app.listen(port, () => {
